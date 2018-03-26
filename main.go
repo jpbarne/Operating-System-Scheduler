@@ -8,6 +8,7 @@ import (
 
 const MAX int = 1000
 
+//data for each task
 type Process struct{
   proccess_id int
   arrival_time int
@@ -19,6 +20,7 @@ type Process struct{
   response_time int
 }
 
+//global variables
 
 var simulation_load = make([]Process, MAX)
 var work_queue = make([]Process, MAX)
@@ -32,6 +34,7 @@ var master_clock int
 var processes_left int
 var switches int
 
+//scan in data
 func read_data() {
 	file, err := os.Open("simulation_load.txt");
   if err != nil {
@@ -75,8 +78,11 @@ func read_data() {
 
 }
 
+//Print final results
 func print_report()  {
   avg := 0
+
+	//print schedule policy used
   if scheduling_policy == 0 {
     fmt.Println("Scheduling Policy: FIFO")
   } else if scheduling_policy == 1 {
@@ -85,6 +91,7 @@ func print_report()  {
     fmt.Println("Scheduling Policy: RR")
   }
 
+	//print preemption policy
   if preemption_policy == 0 {
     fmt.Println("Preemption: OFF")
   } else if preemption_policy == 1 {
@@ -94,6 +101,7 @@ func print_report()  {
   fmt.Println("Time Quantum: ", time_quantum)
   fmt.Println("Number of Process: ", num_of_processes)
 
+	//print each tasks results
   for i := 0; i < num_of_processes; i++ {
     fmt.Println("Process ID: ", simulation_load[i].proccess_id)
     fmt.Println("   Arrival Time: ", simulation_load[i].arrival_time)
@@ -102,9 +110,28 @@ func print_report()  {
     fmt.Println("   Response Time: ", simulation_load[i].response_time)
     avg += simulation_load[i].response_time
   }
+
   avg = avg / num_of_processes
   fmt.Println(" Avg Response Time: ", avg)
   fmt.Println(" Number of Context Switches: ", switches)
+
+}
+
+// First in first out
+func FIFO()  {
+	for i := 0; i < num_of_processes; i++ {
+		simulation_load[i].completion_time = simulation_load[i].proccess_length + master_clock
+		master_clock += simulation_load[i].proccess_length
+		simulation_load[i].response_time = simulation_load[i].completion_time - simulation_load[i].arrival_time
+	}
+	switches = num_of_processes;
+}
+
+func SJF()  {
+
+}
+
+func RR()  {
 
 }
 
