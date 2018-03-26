@@ -1,0 +1,16 @@
+0 Scheduling Policy
+1 Preemption
+10 Time Slice
+3 Number of Processes
+
+0 Task_ID
+84 Task_Length
+0 Arrival_Time
+
+1 Task_ID
+20 Task_Length
+15 Arrival_Time
+
+2 Task_ID
+15 Task_Length
+52 Arrival_Time
