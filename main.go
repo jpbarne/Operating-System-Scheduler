@@ -124,7 +124,7 @@ func FIFO()  {
 		master_clock += simulation_load[i].proccess_length
 		simulation_load[i].response_time = simulation_load[i].completion_time - simulation_load[i].arrival_time
 	}
-	switches = num_of_processes;
+	switches = num_of_processes
 }
 
 func SJF()  {
@@ -132,20 +132,52 @@ func SJF()  {
 }
 
 func RR()  {
+	done := false
 
+	for !done {
+
+		if len(simulation_load) > 0 {
+			for i := 0; i < num_of_processes; i++ {
+				if simulation_load[i].arrival_time > master_clock ||
+				simulation_load[i].arrival_time <= master_clock+time_quantum {
+				work_queue = append(work_queue, simulation_load[i])
+				simulation_load = append(simulation_load[:i], simulation_load[i+1:]...)
+				}
+			}
+		}
+
+		switches++
+		on_cpu = work_queue[0]
+
+	 //not going to finish in time_quantum
+		if on_cpu.time_remaining > time_quantum {
+			on_cpu.time_remaining -= time_quantum
+			master_clock += time_quantum
+			work_queue = append(work_queue, on_cpu)
+		} else if on_cpu.time_remaining <= time_quantum {
+			master_clock += on_cpu.time_remaining
+			on_cpu.completion_time = master_clock
+			on_cpu.time_remaining = 0
+			on_cpu.response_time = on_cpu.completion_time - on_cpu.arrival_time
+		}
+
+		if len(work_queue) == 0 {
+			done = true
+		}
+	}
 }
 
 
 func main() {
-  read_data();
+  read_data()
 
 	if scheduling_policy == 0 {
-		FIFO();
+		FIFO()
   } else if scheduling_policy == 1 {
-		SJF();
+		SJF()
   } else if scheduling_policy == 2 {
-		RR();
+		RR()
   }
 
-	print_report();
+	print_report()
 }
