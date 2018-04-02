@@ -1,4 +1,4 @@
-0 Scheduling Policy 
+2 Scheduling Policy
 1 Preemption
 10 Time Slice
 10 Number of Processes

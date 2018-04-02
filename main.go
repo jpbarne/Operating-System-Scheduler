@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 )
 
 const MAX int = 1000
@@ -23,8 +24,6 @@ type Process struct{
 //global variables
 
 var simulation_load = make([]Process, MAX)
-var work_queue = make([]Process, MAX)
-var on_cpu Process
 
 var num_of_processes int
 var scheduling_policy int
@@ -58,6 +57,9 @@ func read_data() {
     simulation_load[i].completion_time = -1
     simulation_load[i].response_time = -1
   }
+
+	simulation_load = simulation_load[:num_of_processes]
+
   if err := file.Close(); err != nil {
     log.Fatal(err)
   }
@@ -102,71 +104,94 @@ func print_report()  {
   fmt.Println("Number of Process: ", num_of_processes)
 
 	//print each tasks results
-  for i := 0; i < num_of_processes; i++ {
-    fmt.Println("Process ID: ", simulation_load[i].proccess_id)
-    fmt.Println("   Arrival Time: ", simulation_load[i].arrival_time)
-    fmt.Println("   Process Length: ", simulation_load[i].proccess_length)
-    fmt.Println("   Completion Time: ", simulation_load[i].completion_time)
-    fmt.Println("   Response Time: ", simulation_load[i].response_time)
-    avg += simulation_load[i].response_time
+  for _, proc := range simulation_load {
+    fmt.Println("\nProcess ID: ", proc.proccess_id)
+    fmt.Println("   Arrival Time: ", proc.arrival_time)
+    fmt.Println("   Process Length: ", proc.proccess_length)
+    fmt.Println("   Completion Time: ", proc.completion_time)
+    fmt.Println("   Response Time: ", proc.response_time)
+    avg += proc.response_time
   }
 
   avg = avg / num_of_processes
-  fmt.Println(" Avg Response Time: ", avg)
+  fmt.Println("\n Avg Response Time: ", avg)
   fmt.Println(" Number of Context Switches: ", switches)
 
 }
 
 // First in first out
 func FIFO()  {
-	for i := 0; i < num_of_processes; i++ {
-		simulation_load[i].completion_time = simulation_load[i].proccess_length + master_clock
-		master_clock += simulation_load[i].proccess_length
-		simulation_load[i].response_time = simulation_load[i].completion_time - simulation_load[i].arrival_time
+	for _, proc := range simulation_load {
+		proc.completion_time = proc.proccess_length + master_clock
+		master_clock += proc.proccess_length
+		proc.response_time = proc.completion_time - proc.arrival_time
 	}
 	switches = num_of_processes
 }
 
+//Shortest-Job-First
 func SJF()  {
 
 }
 
+//Round-robin
 func RR()  {
-	done := false
+	work_queue := make([]Process, 0)
 
-	for !done {
-
+	// main loop
+	for {
+		// append processes arriving to work queue
 		if len(simulation_load) > 0 {
-			for i := 0; i < num_of_processes; i++ {
-				if simulation_load[i].arrival_time > master_clock ||
-				simulation_load[i].arrival_time <= master_clock+time_quantum {
-				work_queue = append(work_queue, simulation_load[i])
-				simulation_load = append(simulation_load[:i], simulation_load[i+1:]...)
+			new_load := make([]Process, 0)
+			for _, proc := range simulation_load {
+				if proc.arrival_time >= master_clock &&
+					 proc.arrival_time < master_clock+time_quantum {
+					work_queue = append(work_queue, proc)
+				} else {
+					new_load = append(new_load, proc)
 				}
 			}
+			simulation_load = new_load
 		}
 
 		switches++
-		on_cpu = work_queue[0]
+		on_cpu := work_queue[0] 		// load current process
+		work_queue = work_queue[1:] // pop current proccess off queue
 
-	 //not going to finish in time_quantum
+	 // not going to finish in time_quantum
 		if on_cpu.time_remaining > time_quantum {
 			on_cpu.time_remaining -= time_quantum
 			master_clock += time_quantum
 			work_queue = append(work_queue, on_cpu)
-		} else if on_cpu.time_remaining <= time_quantum {
+		} else if on_cpu.time_remaining <= time_quantum { // will finish
 			master_clock += on_cpu.time_remaining
 			on_cpu.completion_time = master_clock
 			on_cpu.time_remaining = 0
 			on_cpu.response_time = on_cpu.completion_time - on_cpu.arrival_time
+
+			simulation_load = append(simulation_load, on_cpu)
 		}
 
+		// terminate loop
 		if len(work_queue) == 0 {
-			done = true
+			break
 		}
 	}
+
+
 }
 
+// sorting functions
+type Processes []Process
+func (p Processes) Len() int {
+	return len(p)
+}
+func (p Processes) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+func (p Processes) Less(i, j int) bool {
+	return p[i].proccess_id < p[j].proccess_id
+}
 
 func main() {
   read_data()
@@ -177,6 +202,7 @@ func main() {
 		SJF()
   } else if scheduling_policy == 2 {
 		RR()
+		sort.Sort(Processes(simulation_load))
   }
 
 	print_report()
