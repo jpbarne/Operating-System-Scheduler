@@ -129,9 +129,81 @@ func FIFO()  {
 	switches = num_of_processes
 }
 
-//Shortest-Job-First
-func SJF()  {
+// for sorting by shortest job length
+type Shortest []Process
+func (p Shortest) Len() int {
+	return len(p)
+}
+func (p Shortest) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+func (p Shortest) Less(i, j int) bool {
+	return p[i].time_remaining < p[j].time_remaining
+}
 
+//Shortest-Job-First
+func SJF() {
+	work_load := make([]Process, 0)
+
+	// main loop
+	for {
+		fmt.Println(work_load)
+
+		//preemptive
+		if preemption_policy == 1 {
+			//fill work load list
+			new_load := make([]Process, 0)
+			for _, proc := range simulation_load {
+				if proc.arrival_time >= master_clock &&
+					 proc.arrival_time < master_clock+time_quantum {
+					 work_load = append(work_load, proc)
+					 fmt.Println(work_load, proc)
+				 } else {
+					 new_load = append(new_load, proc)
+				 }
+			}
+			simulation_load = new_load
+			sort.Sort(Shortest(work_load))
+
+			on_cpu := work_load[0]
+			switches++
+
+			// for time Quantum
+			for ; master_clock <= master_clock+time_quantum; master_clock++ {
+
+				//check current job is the shortest
+				var shorter Process
+				for _, proc := range work_load {
+					if proc.time_remaining < on_cpu.time_remaining &&
+						 proc.arrival_time <= master_clock {
+						 shorter = proc
+					 }
+				}
+
+				// shorter job arrived; preempt
+				if shorter != (Process{}){
+					on_cpu = shorter
+					switches++
+				}
+
+				on_cpu.time_remaining--
+				if on_cpu.time_remaining == 0 {
+					on_cpu.completion_time = master_clock
+					on_cpu.response_time = on_cpu.completion_time - on_cpu.arrival_time
+					work_load = work_load[1:]
+					simulation_load = append(simulation_load, on_cpu)
+					break
+				}
+			}
+
+		} else { // non-preemptive
+
+		}
+
+		if len(work_load) == 0 {
+			break
+		}
+	}
 }
 
 //Round-robin
@@ -200,6 +272,7 @@ func main() {
 		FIFO()
   } else if scheduling_policy == 1 {
 		SJF()
+		sort.Sort(Processes(simulation_load))
   } else if scheduling_policy == 2 {
 		RR()
 		sort.Sort(Processes(simulation_load))
