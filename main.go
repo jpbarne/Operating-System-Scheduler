@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"time"
 )
 
 const MAX int = 1000
@@ -141,68 +142,85 @@ func (p Shortest) Less(i, j int) bool {
 	return p[i].time_remaining < p[j].time_remaining
 }
 
+func SJF_PREE(work_load []Process, last_proc Process)  {
+	for {
+		fmt.Println(work_load, simulation_load)
+
+		//fill work load list
+		new_load := make([]Process, 0)
+		for _, proc := range simulation_load {
+			if proc.arrival_time >= master_clock && proc.arrival_time < master_clock+time_quantum {
+				 work_load = append(work_load, proc)
+			 } else {
+				 new_load = append(new_load, proc)
+			 }
+		}
+		simulation_load = new_load
+		sort.Sort(Shortest(work_load))
+
+		//update on_cpu and work_load
+		on_cpu := work_load[0]
+		work_load = work_load[1:]
+
+		//update switches
+		if last_proc.proccess_id != on_cpu.proccess_id {
+			switches++
+		}
+		last_proc = on_cpu
+
+		// for time Quantum
+		for i := 0; i < time_quantum; i++ {
+			//check current job is the shortest
+			var shorter Process
+			for _, proc := range work_load {
+				if proc.time_remaining < on_cpu.time_remaining &&
+					 proc.arrival_time <= master_clock {
+					 shorter = proc
+				 }
+			}
+
+			// shorter job arrived -> preempt
+			if shorter != (Process{}){
+				work_load = append(work_load, on_cpu)
+				on_cpu = shorter
+				switches++
+			}
+
+			on_cpu.time_remaining--
+			master_clock++
+			if on_cpu.time_remaining == 0 {
+				on_cpu.completion_time = master_clock
+				on_cpu.response_time = on_cpu.completion_time - on_cpu.arrival_time
+				simulation_load = append(simulation_load, on_cpu)
+				break
+			}
+
+			time.Sleep(1000)
+		}
+		
+		if on_cpu.time_remaining > 0 {
+			work_load = append(work_load, on_cpu)
+		}
+
+		if len(work_load) == 0 || master_clock > 1000 {
+			break
+		}
+	}
+}
+
+func SJF_NON(work_load []Process, last_proc Process)  {
+
+}
+
 //Shortest-Job-First
 func SJF() {
 	work_load := make([]Process, 0)
+	last_proc := Process{-1, 0, 0, 0, 0, 0, 0, 0}
 
-	// main loop
-	for {
-		fmt.Println(work_load)
-
-		//preemptive
-		if preemption_policy == 1 {
-			//fill work load list
-			new_load := make([]Process, 0)
-			for _, proc := range simulation_load {
-				if proc.arrival_time >= master_clock &&
-					 proc.arrival_time < master_clock+time_quantum {
-					 work_load = append(work_load, proc)
-					 fmt.Println(work_load, proc)
-				 } else {
-					 new_load = append(new_load, proc)
-				 }
-			}
-			simulation_load = new_load
-			sort.Sort(Shortest(work_load))
-
-			on_cpu := work_load[0]
-			switches++
-
-			// for time Quantum
-			for ; master_clock <= master_clock+time_quantum; master_clock++ {
-
-				//check current job is the shortest
-				var shorter Process
-				for _, proc := range work_load {
-					if proc.time_remaining < on_cpu.time_remaining &&
-						 proc.arrival_time <= master_clock {
-						 shorter = proc
-					 }
-				}
-
-				// shorter job arrived; preempt
-				if shorter != (Process{}){
-					on_cpu = shorter
-					switches++
-				}
-
-				on_cpu.time_remaining--
-				if on_cpu.time_remaining == 0 {
-					on_cpu.completion_time = master_clock
-					on_cpu.response_time = on_cpu.completion_time - on_cpu.arrival_time
-					work_load = work_load[1:]
-					simulation_load = append(simulation_load, on_cpu)
-					break
-				}
-			}
-
-		} else { // non-preemptive
-
-		}
-
-		if len(work_load) == 0 {
-			break
-		}
+	if preemption_policy == 1 {
+		SJF_PREE(work_load, last_proc)
+	} else {
+		SJF_NON(work_load, last_proc)
 	}
 }
 
@@ -249,8 +267,6 @@ func RR()  {
 			break
 		}
 	}
-
-
 }
 
 // sorting functions
