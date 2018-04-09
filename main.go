@@ -121,10 +121,11 @@ func print_report()  {
 
 // First in first out
 func FIFO()  {
-	for _, proc := range simulation_load {
-		proc.completion_time = proc.proccess_length + master_clock
-		master_clock += proc.proccess_length
-		proc.response_time = proc.completion_time - proc.arrival_time
+	//for each task update values
+	for i := 0; i < num_of_processes; i++ {
+		simulation_load[i].completion_time = simulation_load[i].proccess_length + master_clock
+		master_clock += simulation_load[i].proccess_length
+		simulation_load[i].response_time = simulation_load[i].completion_time - simulation_load[i].arrival_time
 	}
 	switches = num_of_processes
 }
@@ -141,109 +142,55 @@ func (p Shortest) Less(i, j int) bool {
 	return p[i].time_remaining < p[j].time_remaining
 }
 
-func SJF_PREE(work_load []Process, last_proc Process)  {
+//Shortest-Job-First
+func SJF() {
+	//work_load holds all jobs to be completed
+	work_load := make([]Process, 0)
 	work_load = append(work_load, simulation_load[0])
 	simulation_load = simulation_load[1:]
 
 	for {
-		//update on_cpu and work_load
-		sort.Sort(Shortest(work_load))
+		//update on_cpu, switches, and work_load
+		sort.Sort(Shortest(work_load)) //sort by time_remaining
 		on_cpu := work_load[0]
 		work_load = work_load[1:]
+		switches++
 
-		//update switches
-		/*if last_proc.proccess_id != on_cpu.proccess_id {
-			fmt.Println(last_proc, "		", on_cpu)
-			switches++
-		}*/
-
-		// for time Quantum
-/*		for i := 0; i < time_quantum; i++ {
-			//check current job is the shortest
-			var shorter Process
-			for _, proc := range work_load {
-				if proc.time_remaining < on_cpu.time_remaining &&
-					 proc.arrival_time == master_clock {
-					 shorter = proc
-				 }
-			}
-
-			// shorter job arrived -> preempt
-			if shorter != (Process{}){
-				work_load = append(work_load, on_cpu)
-				on_cpu = shorter
-				switches++
-			}
-
-			on_cpu.time_remaining--
-			master_clock++
-			if on_cpu.time_remaining == 0 {
-				on_cpu.completion_time = master_clock
-				on_cpu.response_time = on_cpu.completion_time - on_cpu.arrival_time
-				simulation_load = append(simulation_load, on_cpu)
-				break
-			}
-		} */
-
-		for i := 0; i < time_quantum; i++ {
-			//fill work load list
-			new_load := make([]Process, 0)
-			for _, proc := range simulation_load {
-				if proc.arrival_time == master_clock {
-					 work_load = append(work_load, proc)
-				 } else {
-					 new_load = append(new_load, proc)
-				 }
-			}
-			simulation_load = new_load
-			sort.Sort(Shortest(work_load))
-
-			if len(work_load) > 0 {
-				if work_load[0].time_remaining < on_cpu.time_remaining &&
-					 work_load[0].arrival_time >= master_clock 						 {
-					 fmt.Println(work_load[0])
-					 i = 0
-					 work_load = append(work_load, on_cpu)
-					 on_cpu = work_load[0]
-					 work_load = work_load[1:]
-					 sort.Sort(Shortest(work_load))
-					 switches++
-				}
-			}
-			on_cpu.time_remaining--
-			master_clock++
-
-			if on_cpu.time_remaining == 0 {
-				switches++
-				on_cpu.completion_time = master_clock
-				on_cpu.response_time = on_cpu.completion_time - on_cpu.arrival_time
-				simulation_load = append(simulation_load, on_cpu)
-			}
+		//update clock and time remaining
+		if on_cpu.time_remaining >= time_quantum {
+			on_cpu.time_remaining -= time_quantum
+			master_clock += time_quantum
+		} else {
+			master_clock += on_cpu.time_remaining
+			on_cpu.time_remaining = 0
 		}
-		//task didn't finish
-		if on_cpu.time_remaining > 0 {
+
+		//check if job complete
+		if on_cpu.time_remaining == 0 {
+			//update task variables
+			on_cpu.completion_time = master_clock
+			on_cpu.response_time = on_cpu.completion_time - on_cpu.arrival_time
+			simulation_load = append(simulation_load, on_cpu)
+		} else { //if not complete, add task back to work load
 			work_load = append(work_load, on_cpu)
 		}
 
+		//fill work load list and remove work load elements from simulation load
+		new_load := make([]Process, 0)
+		for _, proc := range simulation_load {
+			if proc.arrival_time <= master_clock &&
+				 proc.arrival_time > master_clock - time_quantum {
+				 work_load = append(work_load, proc)
+			 } else {
+				 new_load = append(new_load, proc)
+			 }
+		}
+		simulation_load = new_load
+
+		//continue while jobs remain
 		if len(work_load) == 0 {
 			break
 		}
-	}
-}
-
-func SJF_NON(work_load []Process, last_proc Process)  {
-
-}
-
-//Shortest-Job-First
-func SJF() {
-	work_load := make([]Process, 0)
-	last_proc := Process{-1, 0, 0, 0, 0, 0, 0, 0}
-
-	if preemption_policy == 1 {
-		SJF_PREE(work_load, last_proc)
-	} else {
-		SJF_NON(work_load, last_proc)
 	}
 }
 
@@ -307,8 +254,10 @@ func (p Processes) Less(i, j int) bool {
 func main() {
   read_data()
 
+	//chose task based on scheduling_policy
 	if scheduling_policy == 0 {
 		FIFO()
+		sort.Sort(Processes(simulation_load))
   } else if scheduling_policy == 1 {
 		SJF()
 		sort.Sort(Processes(simulation_load))
