@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"sort"
-	"time"
 )
 
 const MAX int = 1000
@@ -143,38 +142,28 @@ func (p Shortest) Less(i, j int) bool {
 }
 
 func SJF_PREE(work_load []Process, last_proc Process)  {
+	work_load = append(work_load, simulation_load[0])
+	simulation_load = simulation_load[1:]
+
 	for {
-		fmt.Println(work_load, simulation_load)
-
-		//fill work load list
-		new_load := make([]Process, 0)
-		for _, proc := range simulation_load {
-			if proc.arrival_time >= master_clock && proc.arrival_time < master_clock+time_quantum {
-				 work_load = append(work_load, proc)
-			 } else {
-				 new_load = append(new_load, proc)
-			 }
-		}
-		simulation_load = new_load
-		sort.Sort(Shortest(work_load))
-
 		//update on_cpu and work_load
+		sort.Sort(Shortest(work_load))
 		on_cpu := work_load[0]
 		work_load = work_load[1:]
 
 		//update switches
-		if last_proc.proccess_id != on_cpu.proccess_id {
+		/*if last_proc.proccess_id != on_cpu.proccess_id {
+			fmt.Println(last_proc, "		", on_cpu)
 			switches++
-		}
-		last_proc = on_cpu
+		}*/
 
 		// for time Quantum
-		for i := 0; i < time_quantum; i++ {
+/*		for i := 0; i < time_quantum; i++ {
 			//check current job is the shortest
 			var shorter Process
 			for _, proc := range work_load {
 				if proc.time_remaining < on_cpu.time_remaining &&
-					 proc.arrival_time <= master_clock {
+					 proc.arrival_time == master_clock {
 					 shorter = proc
 				 }
 			}
@@ -194,15 +183,49 @@ func SJF_PREE(work_load []Process, last_proc Process)  {
 				simulation_load = append(simulation_load, on_cpu)
 				break
 			}
+		} */
 
-			time.Sleep(1000)
+		for i := 0; i < time_quantum; i++ {
+			//fill work load list
+			new_load := make([]Process, 0)
+			for _, proc := range simulation_load {
+				if proc.arrival_time == master_clock {
+					 work_load = append(work_load, proc)
+				 } else {
+					 new_load = append(new_load, proc)
+				 }
+			}
+			simulation_load = new_load
+			sort.Sort(Shortest(work_load))
+
+			if len(work_load) > 0 {
+				if work_load[0].time_remaining < on_cpu.time_remaining &&
+					 work_load[0].arrival_time >= master_clock 						 {
+					 fmt.Println(work_load[0])
+					 i = 0
+					 work_load = append(work_load, on_cpu)
+					 on_cpu = work_load[0]
+					 work_load = work_load[1:]
+					 sort.Sort(Shortest(work_load))
+					 switches++
+				}
+			}
+			on_cpu.time_remaining--
+			master_clock++
+
+			if on_cpu.time_remaining == 0 {
+				switches++
+				on_cpu.completion_time = master_clock
+				on_cpu.response_time = on_cpu.completion_time - on_cpu.arrival_time
+				simulation_load = append(simulation_load, on_cpu)
+			}
 		}
-		
+		//task didn't finish
 		if on_cpu.time_remaining > 0 {
 			work_load = append(work_load, on_cpu)
 		}
 
-		if len(work_load) == 0 || master_clock > 1000 {
+		if len(work_load) == 0 {
 			break
 		}
 	}
